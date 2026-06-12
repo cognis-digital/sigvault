@@ -267,6 +267,71 @@ def sign_file(path: str, key: KeyPair, *,
     return sign_statement(statement, key)
 
 
+# SBOM attestation predicate type (CycloneDX/SPDX-style "this artifact's BOM").
+SBOM_PREDICATE_TYPE = "https://cognis.digital/attestations/sbom/v1"
+
+
+def attest_sbom(path: str, sbom: Dict[str, Any], key: KeyPair) -> Dict[str, Any]:
+    """Sign an SBOM *about* a file as a DSSE in-toto attestation.
+
+    The file's digest is the subject; the SBOM document is the predicate.
+    """
+    if not os.path.isfile(path):
+        raise SigvaultError(f"file not found: {path}")
+    statement = build_statement(
+        subjects=[subject_for_file(path)],
+        predicate_type=SBOM_PREDICATE_TYPE,
+        predicate=sbom)
+    return sign_statement(statement, key)
+
+
+def add_signature(envelope: Dict[str, Any], key: KeyPair) -> Dict[str, Any]:
+    """Co-sign an existing DSSE envelope with an additional key.
+
+    The same payload (and its PAE) is signed; the new signature is appended.
+    Returns a NEW envelope (the input is not mutated). Idempotent per key id.
+    """
+    try:
+        payload = _b64d(envelope["payload"])
+        payload_type = envelope.get("payloadType", DSSE_PAYLOAD_TYPE)
+        sigs = list(envelope.get("signatures", []))
+    except (KeyError, ValueError, TypeError) as exc:
+        raise SigvaultError(f"malformed DSSE envelope: {exc}") from exc
+    pae = dsse_pae(payload_type, payload)
+    new_sig = {"keyid": key.key_id, "sig": _b64e(_raw_sign(key, pae))}
+    if not any(s.get("keyid") == key.key_id for s in sigs):
+        sigs.append(new_sig)
+    return {"payloadType": payload_type, "payload": envelope["payload"],
+            "signatures": sigs}
+
+
+def verify_threshold(envelope: Dict[str, Any], keys: List[KeyPair],
+                     threshold: int = 1) -> Dict[str, Any]:
+    """Verify an envelope reaches ``threshold`` distinct valid signers from ``keys``.
+
+    Returns {ok, valid_signers, threshold, signer_ids}. A signer counts once
+    even if the envelope carries duplicate signatures.
+    """
+    try:
+        payload = _b64d(envelope["payload"])
+        payload_type = envelope.get("payloadType", DSSE_PAYLOAD_TYPE)
+        sigs = envelope.get("signatures", [])
+    except (KeyError, ValueError, TypeError) as exc:
+        raise SigvaultError(f"malformed DSSE envelope: {exc}") from exc
+    pae = dsse_pae(payload_type, payload)
+    valid: set = set()
+    for key in keys:
+        for s in sigs:
+            try:
+                if _raw_verify(key, pae, _b64d(s["sig"])):
+                    valid.add(key.key_id)
+                    break
+            except (KeyError, ValueError):
+                continue
+    return {"ok": len(valid) >= threshold, "valid_signers": len(valid),
+            "threshold": threshold, "signer_ids": sorted(valid)}
+
+
 def verify_envelope(envelope: Dict[str, Any], key: KeyPair) -> Dict[str, Any]:
     """Verify a DSSE envelope's signature(s) against a public key.
 

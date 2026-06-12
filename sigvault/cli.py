@@ -62,6 +62,25 @@ def _build_parser() -> argparse.ArgumentParser:
     pol.add_argument("--min-signatures", type=int, default=1)
     pol.add_argument("--format", choices=("table", "json"), default="table")
 
+    asg = sub.add_parser("add-sig", help="Co-sign an existing envelope with another key.")
+    asg.add_argument("envelope")
+    asg.add_argument("--key", required=True, help="Additional private key (.key).")
+    asg.add_argument("--out", help="Output envelope (default: overwrite input).")
+
+    vt = sub.add_parser("verify-threshold",
+                        help="Require N distinct valid signers from a key set.")
+    vt.add_argument("envelope")
+    vt.add_argument("--key", action="append", required=True, dest="keys",
+                    metavar="PUB", help="Public key (repeatable).")
+    vt.add_argument("--threshold", type=int, default=1)
+    vt.add_argument("--format", choices=("table", "json"), default="table")
+
+    sb = sub.add_parser("attest-sbom", help="Sign an SBOM document about a file.")
+    sb.add_argument("file")
+    sb.add_argument("--sbom", required=True, help="SBOM JSON document path.")
+    sb.add_argument("--key", required=True, help="Private key (.key).")
+    sb.add_argument("--out", help="Output envelope (default: <file>.sbom.dsse.json).")
+
     sub.add_parser("mcp", help="Run as an MCP server (stdio JSON-RPC).")
     return p
 
@@ -139,6 +158,55 @@ def _run_policy(a) -> int:
     return 0 if res["ok"] else 1
 
 
+def _run_add_sig(a) -> int:
+    from sigvault import add_signature, load_private_key
+    try:
+        with open(a.envelope, "r", encoding="utf-8") as fh:
+            env = json.load(fh)
+        out = add_signature(env, load_private_key(a.key))
+    except (OSError, SigvaultError, json.JSONDecodeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    _emit(json.dumps(out, indent=2), a.out or a.envelope)
+    print(f"envelope now has {len(out['signatures'])} signature(s)", file=sys.stderr)
+    return 0
+
+
+def _run_verify_threshold(a) -> int:
+    from sigvault import load_public_key, verify_threshold
+    try:
+        with open(a.envelope, "r", encoding="utf-8") as fh:
+            env = json.load(fh)
+        keys = [load_public_key(k) for k in a.keys]
+        res = verify_threshold(env, keys, threshold=a.threshold)
+    except (OSError, SigvaultError, json.JSONDecodeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if a.format == "json":
+        _emit(json.dumps(res, indent=2), None)
+    else:
+        print(f"sigvault verify-threshold — {res['valid_signers']}/"
+              f"{res['threshold']} required")
+        for sid in res["signer_ids"]:
+            print(f"  + {sid}")
+        print("RESULT: " + ("PASS" if res["ok"] else "FAIL"))
+    return 0 if res["ok"] else 1
+
+
+def _run_attest_sbom(a) -> int:
+    from sigvault import attest_sbom, load_private_key
+    try:
+        with open(a.sbom, "r", encoding="utf-8") as fh:
+            sbom = json.load(fh)
+        env = attest_sbom(a.file, sbom, load_private_key(a.key))
+    except (OSError, SigvaultError, json.JSONDecodeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    out = a.out or (a.file + ".sbom.dsse.json")
+    _emit(json.dumps(env, indent=2), out)
+    return 0
+
+
 def _run_mcp() -> int:
     from sigvault.mcp_server import run_mcp_server
     run_mcp_server()
@@ -156,6 +224,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         return _run_verify(args)
     if args.command == "policy":
         return _run_policy(args)
+    if args.command == "add-sig":
+        return _run_add_sig(args)
+    if args.command == "verify-threshold":
+        return _run_verify_threshold(args)
+    if args.command == "attest-sbom":
+        return _run_attest_sbom(args)
     if args.command == "mcp":
         return _run_mcp()
     parser.print_help(sys.stderr)

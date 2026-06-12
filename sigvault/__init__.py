@@ -6,8 +6,11 @@ Part of the Cognis Neural Suite.
 from sigvault.core import (
     TOOL_NAME,
     TOOL_VERSION,
+    SBOM_PREDICATE_TYPE,
     KeyPair,
     SigvaultError,
+    add_signature,
+    attest_sbom,
     build_statement,
     canonical_json,
     dsse_pae,
@@ -23,6 +26,7 @@ from sigvault.core import (
     subject_for_file,
     verify_envelope,
     verify_file,
+    verify_threshold,
 )
 
 __version__ = TOOL_VERSION
@@ -30,9 +34,12 @@ __version__ = TOOL_VERSION
 __all__ = [
     "TOOL_NAME",
     "TOOL_VERSION",
+    "SBOM_PREDICATE_TYPE",
     "__version__",
     "KeyPair",
     "SigvaultError",
+    "add_signature",
+    "attest_sbom",
     "build_statement",
     "canonical_json",
     "dsse_pae",
@@ -48,4 +55,5 @@ __all__ = [
     "subject_for_file",
     "verify_envelope",
     "verify_file",
+    "verify_threshold",
 ]
