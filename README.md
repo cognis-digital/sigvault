@@ -9,6 +9,30 @@ Part of the **Cognis Neural Suite**.
 
 ---
 
+## Usage — step by step
+
+1. **Install** from source (Python 3.9+):
+   ```bash
+   pip install .
+   ```
+2. **Generate** a signing key pair:
+   ```bash
+   sigvault keygen --scheme ed25519 --out sigvault-key
+   ```
+3. **Sign** an artifact, emitting a DSSE provenance envelope:
+   ```bash
+   sigvault sign dist/app.tar.gz --key sigvault-key.key
+   ```
+4. **Verify** the envelope against the artifact + public key:
+   ```bash
+   sigvault verify dist/app.tar.gz --envelope dist/app.tar.gz.dsse.json --key sigvault-key.pub --format json
+   ```
+5. **Gate in CI** with a verification policy (builder/predicate/min-signatures):
+   ```bash
+   sigvault policy dist/app.tar.gz.dsse.json --key sigvault-key.pub --required-builder-id cognis-digital/sigvault --min-signatures 1 --format json
+   ```
+   Other subcommands: `add-sig`, `verify-threshold`, `attest-sbom`, and `mcp` (run as an MCP stdio server).
+
 ## Why
 
 Supply-chain attestation tooling is usually a heavy install. sigvault gives you
