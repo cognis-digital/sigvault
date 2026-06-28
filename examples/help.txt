@@ -1,0 +1,22 @@
+$ sigvault-emit --help
+
+usage: sigvault [-h] [--version]
+                {keygen,sign,verify,policy,add-sig,verify-threshold,attest-sbom,mcp} ...
+
+Artifact signing, verification & SLSA/in-toto provenance — DSSE envelopes,
+ed25519 or portable HMAC, no external crypto.
+
+positional arguments:
+  {keygen,sign,verify,policy,add-sig,verify-threshold,attest-sbom,mcp}
+    keygen              Generate a signing key pair.
+    sign                Sign a file; emit a DSSE provenance envelope.
+    verify              Verify an envelope against a file + public key.
+    policy              Evaluate a verification policy on an envelope.
+    add-sig             Co-sign an existing envelope with another key.
+    verify-threshold    Require N distinct valid signers from a key set.
+    attest-sbom         Sign an SBOM document about a file.
+    mcp                 Run as an MCP server (stdio JSON-RPC).
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit

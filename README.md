@@ -9,6 +9,68 @@ Part of the **Cognis Neural Suite**.
 
 ---
 
+
+<!-- cognis:example:start -->
+## 🔎 Example output
+
+Real, reproducible output from the tool — runs offline:
+
+```console
+$ sigvault-emit --version
+sigvault 0.1.0
+```
+
+```console
+$ sigvault-emit --help
+usage: sigvault [-h] [--version]
+                {keygen,sign,verify,policy,add-sig,verify-threshold,attest-sbom,mcp} ...
+
+Artifact signing, verification & SLSA/in-toto provenance — DSSE envelopes,
+ed25519 or portable HMAC, no external crypto.
+
+positional arguments:
+  {keygen,sign,verify,policy,add-sig,verify-threshold,attest-sbom,mcp}
+    keygen              Generate a signing key pair.
+    sign                Sign a file; emit a DSSE provenance envelope.
+    verify              Verify an envelope against a file + public key.
+    policy              Evaluate a verification policy on an envelope.
+    add-sig             Co-sign an existing envelope with another key.
+    verify-threshold    Require N distinct valid signers from a key set.
+    attest-sbom         Sign an SBOM document about a file.
+    mcp                 Run as an MCP server (stdio JSON-RPC).
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+```
+
+> Blocks above are real `sigvault` output — reproduce them from a clone.
+
+**Sample result format** _(illustrative values — run on your own data for real findings):_
+
+```
+{
+"findings": [
+    {
+        "id": "1234567890",
+        "title": "Suspicious Network Traffic",
+        "description": "Potential malicious activity detected on network port 443",
+        "severity": "medium",
+        "created_at": "2023-02-15T14:30:00Z"
+    },
+    {
+        "id": "2345678901",
+        "title": "Unusual File Access",
+        "description": "User accessed a file with suspicious permissions",
+        "severity": "high",
+        "created_at": "2023-02-16T10:45:00Z"
+    }
+]
+}
+```
+
+<!-- cognis:example:end -->
+
 ## Usage — step by step
 
 1. **Install** from source (Python 3.9+):
